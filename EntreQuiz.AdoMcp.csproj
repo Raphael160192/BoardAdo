@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EntreQuiz.AdoMcp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pacote oficial do SDK de MCP para ASP.NET Core (Streamable HTTP).
+         É preview e evolui rápido. Se o restore reclamar da versão,
+         atualize com: dotnet add package ModelContextProtocol.AspNetCore --prerelease -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.4.0-preview.3" />
+  </ItemGroup>
+
+</Project>
