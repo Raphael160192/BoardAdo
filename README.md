@@ -24,7 +24,7 @@ usa o id retornado como pai das histórias, e o id de cada história como pai da
 | `ADO_ORG`     | Nome da organização no Azure DevOps (ex.: `minhaorg`).              |
 | `ADO_PROJECT` | Nome do project (ex.: `Entre 4 Paredes`).                           |
 | `ADO_PAT`     | Personal Access Token com escopo **Work Items → Read & Write**.     |
-| `MCP_API_KEY` | Segredo forte que o Claude enviará no header `Authorization`.        |
+| `MCP_API_KEY` | Segredo forte enviado pelo Claude (query `?key=`) ou por header `Authorization`. |
 | `PORT`        | Injetada automaticamente pelo Render. Não precisa configurar.       |
 
 Gere o `MCP_API_KEY` como um segredo aleatório longo, por exemplo:
@@ -61,10 +61,11 @@ para o app do celular.
 
 1. Em claude.ai: **Settings** → **Connectors** → **Add custom connector**.
 2. **Name**: `Azure DevOps – Entre 4 Paredes`.
-3. **URL**: a raiz do serviço no Render (ex.: `https://SUA-URL.onrender.com`).
-4. Em **Request headers** (config de autenticação por header):
-   - Header: `Authorization`
-   - Value: `Bearer <o mesmo valor de MCP_API_KEY>`
+3. **URL**: a raiz do serviço no Render, com a chave na query string:
+   `https://SUA-URL.onrender.com/?key=<o mesmo valor de MCP_API_KEY>`
+   (a UI atual do custom connector só tem campos de Nome, URL e OAuth opcional —
+   não há mais campo de headers, por isso a chave vai na própria URL).
+4. Deixe **OAuth Client ID/Secret** em branco.
 5. Salve. O Claude fará o handshake e listará as três tools.
 
 Feito isso, do celular você abre o app do Claude e escreve algo como:
@@ -93,5 +94,6 @@ Para inspecionar as tools sem o Claude, use o **MCP Inspector** apontando para
 
 - O `ADO_PAT` nunca sai do servidor — o Claude só conversa com este endpoint, nunca vê o token.
 - O gate por `MCP_API_KEY` impede que qualquer um na internet use seu endpoint. Trate essa chave como senha.
+- Como a chave vai na URL do connector (`?key=`), ela pode aparecer em logs de acesso do Render. Se isso for uma preocupação, gire (rotacione) a chave periodicamente.
 - Escopo mínimo no PAT (só Work Items R/W) limita o estrago caso algo vaze.
 - Se quiser travar o server em modo somente-leitura no futuro, dá pra evoluir as tools; hoje ele só cria itens.

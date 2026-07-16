@@ -13,7 +13,7 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 //   ADO_ORG      -> nome da organização no Azure DevOps (ex.: "minhaorg")
 //   ADO_PROJECT  -> nome do project (ex.: "Entre 4 Paredes")
 //   ADO_PAT      -> Personal Access Token com escopo Work Items (Read & Write)
-//   MCP_API_KEY  -> segredo que o Claude precisa enviar no header Authorization
+//   MCP_API_KEY  -> segredo que o Claude precisa enviar (header Authorization ou ?key=)
 var config = builder.Configuration;
 string Require(string key) =>
     config[key] ?? throw new InvalidOperationException($"Variável de ambiente '{key}' não configurada.");
@@ -37,9 +37,13 @@ builder.Services
 var app = builder.Build();
 
 // --- Gate de segurança por chave compartilhada ---
-// O endpoint é público na internet. Exigimos Authorization: Bearer <MCP_API_KEY>
-// em todas as rotas, exceto o /health (que o Render usa para checar liveness).
-var expectedAuth = Encoding.UTF8.GetBytes($"Bearer {mcpApiKey}");
+// O endpoint é público na internet. Exigimos a chave em todas as rotas, exceto
+// o /health (que o Render usa para checar liveness). Aceitamos a chave de duas
+// formas: header "Authorization: Bearer <chave>" (uso via curl/MCP Inspector)
+// ou query string "?key=<chave>" (necessário porque o custom connector do
+// claude.ai hoje só permite configurar Nome + URL, sem campo de headers).
+var expectedAuthHeader = Encoding.UTF8.GetBytes($"Bearer {mcpApiKey}");
+var expectedKey = Encoding.UTF8.GetBytes(mcpApiKey);
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/health")
@@ -48,8 +52,15 @@ app.Use(async (context, next) =>
         return;
     }
 
-    var provided = Encoding.UTF8.GetBytes(context.Request.Headers.Authorization.ToString());
-    if (!CryptographicOperations.FixedTimeEquals(provided, expectedAuth))
+    var providedHeader = Encoding.UTF8.GetBytes(context.Request.Headers.Authorization.ToString());
+    var providedKey = Encoding.UTF8.GetBytes(context.Request.Query["key"].ToString());
+
+    var headerMatches = providedHeader.Length == expectedAuthHeader.Length &&
+        CryptographicOperations.FixedTimeEquals(providedHeader, expectedAuthHeader);
+    var keyMatches = providedKey.Length == expectedKey.Length &&
+        CryptographicOperations.FixedTimeEquals(providedKey, expectedKey);
+
+    if (!headerMatches && !keyMatches)
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         await context.Response.WriteAsync("Unauthorized");
