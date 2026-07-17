@@ -67,6 +67,16 @@ public sealed class WorkItemTools(AzureDevOpsClient ado)
         CancellationToken ct = default)
         => ado.CreateWorkItemAsync("Issue", title, description, parentId, ct);
 
+    [McpServerTool(Name = "update_work_item")]
+    [Description("Atualiza campos básicos de um work item existente: título, descrição e/ou estado. Informe apenas os campos que devem mudar — os demais ficam como estão. Não cria nem apaga itens.")]
+    public Task<WorkItemResult> UpdateWorkItem(
+        [Description("Id do work item a atualizar (o número que aparece no board).")] int id,
+        [Description("Novo título. Opcional: omita para manter o atual.")] string? title = null,
+        [Description("Nova descrição (HTML ou texto) — substitui a atual por inteiro. Opcional.")] string? description = null,
+        [Description("Novo estado do process Agile: 'New', 'Active', 'Resolved' ou 'Closed'. Opcional.")] string? state = null,
+        CancellationToken ct = default)
+        => ado.UpdateWorkItemAsync(id, title, description, state, ct);
+
     [McpServerTool(Name = "get_work_item")]
     [Description("Consulta um work item pelo id e devolve os detalhes, incluindo estado, responsável, descrição, o id do pai e os ids dos filhos. Use os ids de pai/filhos para navegar a árvore do backlog item a item.")]
     public Task<WorkItemDetail> GetWorkItem(

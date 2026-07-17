@@ -29,6 +29,12 @@ do process **Agile** é `Epic > Feature > User Story > Task`.
 | `get_work_item`   | Um item pelo id: estado, responsável, descrição, id do pai e dos filhos. |
 | `list_work_items` | Lista resumida, filtrável por `type`, `state`, `titleContains` e `parentId`. |
 
+### Atualização
+
+| Tool               | Faz                                                                  |
+| ------------------ | -------------------------------------------------------------------- |
+| `update_work_item` | Atualiza título, descrição e/ou estado de um item existente (só os campos informados). |
+
 `list_work_items` ordena do alterado mais recentemente para o mais antigo e monta o
 WIQL internamente — o Claude passa filtros estruturados, nunca query crua. Combinado
 com `get_work_item`, dá para navegar a árvore do backlog item a item.
@@ -117,4 +123,4 @@ Para inspecionar as tools sem o Claude, use o **MCP Inspector** apontando para
 - O gate por `MCP_API_KEY` impede que qualquer um na internet use seu endpoint. Trate essa chave como senha.
 - Como a chave vai na URL do connector (`?key=`), ela pode aparecer em logs de acesso do Render. Se isso for uma preocupação, gire (rotacione) a chave periodicamente.
 - Escopo mínimo no PAT (só Work Items R/W) limita o estrago caso algo vaze.
-- As tools só criam e leem work items — nenhuma edita ou apaga o que já existe.
+- As tools criam, leem e atualizam campos básicos (título, descrição, estado) — nenhuma apaga work items.

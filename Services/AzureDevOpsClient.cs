@@ -100,6 +100,56 @@ public sealed class AzureDevOpsClient
         return new WorkItemResult(id, title, workItemType, url ?? string.Empty);
     }
 
+    /// <summary>
+    /// Atualiza campos básicos de um work item existente. Só os campos informados
+    /// entram no JSON Patch (op "add" substitui o valor de um campo que já existe).
+    /// </summary>
+    public async Task<WorkItemResult> UpdateWorkItemAsync(
+        int id,
+        string? title,
+        string? description,
+        string? state,
+        CancellationToken ct = default)
+    {
+        var ops = new List<object>();
+
+        if (!string.IsNullOrWhiteSpace(title))
+            ops.Add(new { op = "add", path = "/fields/System.Title", value = title });
+        if (!string.IsNullOrWhiteSpace(description))
+            ops.Add(new { op = "add", path = "/fields/System.Description", value = description });
+        if (!string.IsNullOrWhiteSpace(state))
+            ops.Add(new { op = "add", path = "/fields/System.State", value = state });
+
+        if (ops.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "Nada para atualizar: informe pelo menos um entre title, description e state.");
+        }
+
+        var json = JsonSerializer.Serialize(ops);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json-patch+json");
+
+        var requestUri = $"{Uri.EscapeDataString(_opts.Project)}/_apis/wit/workitems/{id}?api-version={ApiVersion}";
+
+        using var resp = await _http.PatchAsync(requestUri, content, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Azure DevOps retornou {(int)resp.StatusCode} ao atualizar o work item {id}: {body}");
+        }
+
+        using var doc = JsonDocument.Parse(body);
+        var fields = doc.RootElement.GetProperty("fields");
+
+        return new WorkItemResult(
+            id,
+            Field(fields, "System.Title") ?? title ?? string.Empty,
+            Field(fields, "System.WorkItemType") ?? string.Empty,
+            HtmlUrl(id));
+    }
+
     /// <summary>Busca um work item pelo id, já resolvendo pai e filhos.</summary>
     public async Task<WorkItemDetail> GetWorkItemAsync(int id, CancellationToken ct = default)
     {
