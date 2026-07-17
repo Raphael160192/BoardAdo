@@ -1,21 +1,37 @@
 # Entre 4 Paredes — Azure DevOps MCP Server
 
-Servidor MCP (Streamable HTTP) em .NET que expõe ao Claude três ferramentas para
-criar **Épico → User Story → Task** no Azure DevOps, com a hierarquia montada
-automaticamente. Pensado para rodar no Render (free) e ser conectado ao Claude
-como *custom connector*, permitindo criar backlog por linguagem natural — inclusive
-do celular.
+Servidor MCP (Streamable HTTP) em .NET que expõe ao Claude ferramentas para criar
+e consultar work items no Azure DevOps, com a hierarquia montada automaticamente.
+Pensado para rodar no Render (free) e ser conectado ao Claude como *custom
+connector*, permitindo gerenciar backlog por linguagem natural — inclusive do celular.
 
 ## Ferramentas expostas
 
-| Tool                | Cria       | Precisa de parentId? |
-| ------------------- | ---------- | -------------------- |
-| `create_epic`       | Epic       | Não                  |
-| `create_user_story` | User Story | Sim (id do épico)    |
-| `create_task`       | Task       | Sim (id da história) |
+### Criação
 
-Cada tool devolve o `id` criado, então o Claude encadeia sozinho: cria o épico,
-usa o id retornado como pai das histórias, e o id de cada história como pai das tasks.
+| Tool                | Cria       | parentId                              |
+| ------------------- | ---------- | ------------------------------------- |
+| `create_epic`       | Epic       | —                                     |
+| `create_feature`    | Feature    | Opcional (id do épico)                |
+| `create_user_story` | User Story | Obrigatório (id da feature ou épico)  |
+| `create_task`       | Task       | Obrigatório (id da história)          |
+| `create_bug`        | Bug        | Opcional (id da história ou feature)  |
+| `create_issue`      | Issue      | Opcional (normalmente sem pai)        |
+
+Cada tool devolve o `id` criado, então o Claude encadeia sozinho: cria o épico, usa
+o id retornado como pai das features, e assim por diante até as tasks. A hierarquia
+do process **Agile** é `Epic > Feature > User Story > Task`.
+
+### Consulta
+
+| Tool              | Devolve                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `get_work_item`   | Um item pelo id: estado, responsável, descrição, id do pai e dos filhos. |
+| `list_work_items` | Lista resumida, filtrável por `type`, `state`, `titleContains` e `parentId`. |
+
+`list_work_items` ordena do alterado mais recentemente para o mais antigo e monta o
+WIQL internamente — o Claude passa filtros estruturados, nunca query crua. Combinado
+com `get_work_item`, dá para navegar a árvore do backlog item a item.
 
 ## Variáveis de ambiente
 
@@ -32,6 +48,11 @@ Gere o `MCP_API_KEY` como um segredo aleatório longo, por exemplo:
 ```bash
 openssl rand -hex 32
 ```
+
+> O project precisa usar o process **Agile** (ou Scrum), que é quem define os tipos
+> `Epic`, `Feature`, `User Story`, `Task`, `Bug` e `Issue` que as tools criam. O process
+> **Basic** não tem `User Story` nem `Feature`, e não dá para trocar o process depois
+> de criar o project — escolha em **Advanced** na tela de criação.
 
 ## Gerar o PAT no Azure DevOps
 
@@ -96,4 +117,4 @@ Para inspecionar as tools sem o Claude, use o **MCP Inspector** apontando para
 - O gate por `MCP_API_KEY` impede que qualquer um na internet use seu endpoint. Trate essa chave como senha.
 - Como a chave vai na URL do connector (`?key=`), ela pode aparecer em logs de acesso do Render. Se isso for uma preocupação, gire (rotacione) a chave periodicamente.
 - Escopo mínimo no PAT (só Work Items R/W) limita o estrago caso algo vaze.
-- Se quiser travar o server em modo somente-leitura no futuro, dá pra evoluir as tools; hoje ele só cria itens.
+- As tools só criam e leem work items — nenhuma edita ou apaga o que já existe.
